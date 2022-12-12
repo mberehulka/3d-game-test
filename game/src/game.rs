@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use winit::{event_loop::{EventLoop, ControlFlow}, platform::run_return::EventLoopExtRunReturn,
     event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, ElementState}};
 
@@ -5,7 +7,8 @@ use crate::{context::Context, assets::Objects, ui::UI};
 
 pub struct Game {
     pub event_loop: Option<EventLoop<()>>,
-    pub context: Context
+    pub context: Context,
+    pub pressed_keys: HashSet<VirtualKeyCode>
 }
 impl Game {
     pub fn new() -> Self {
@@ -13,7 +16,8 @@ impl Game {
         let context = Context::new(&event_loop);
         Self {
             context,
-            event_loop: Some(event_loop)
+            event_loop: Some(event_loop),
+            pressed_keys: HashSet::new()
         }
     }
     pub fn start(mut self) {
@@ -26,26 +30,18 @@ impl Game {
                         match (key, state) {
                             (VirtualKeyCode::Escape, ElementState::Pressed) =>
                                 *control_flow = ControlFlow::Exit,
-                            (VirtualKeyCode::B, ElementState::Pressed) =>
-                                c.character.lock().unwrap().as_ref().unwrap().set_animation(c.assets.get_animation("ch_shoved_reaction")),
-                            (VirtualKeyCode::N, ElementState::Pressed) =>
-                                c.character.lock().unwrap().as_ref().unwrap().set_animation(c.assets.get_animation("ch_walk_f")),
-                            (VirtualKeyCode::M, ElementState::Pressed) =>
-                                c.character.lock().unwrap().as_ref().unwrap().set_animation(c.assets.get_animation("ch_idle")),
 
-                            (VirtualKeyCode::I, ElementState::Pressed) =>
-                                c.shaders.increase_a(&c.device, c.surface_config.lock().unwrap().format, 0.001),
-                            (VirtualKeyCode::O, ElementState::Pressed) =>
-                                c.shaders.increase_b(&c.device, c.surface_config.lock().unwrap().format, 0.001),
-                            (VirtualKeyCode::P, ElementState::Pressed) =>
-                                c.shaders.increase_c(&c.device, c.surface_config.lock().unwrap().format, 0.001),
-                            (VirtualKeyCode::J, ElementState::Pressed) =>
-                                c.shaders.increase_a(&c.device, c.surface_config.lock().unwrap().format, -0.001),
-                            (VirtualKeyCode::K, ElementState::Pressed) =>
-                                c.shaders.increase_b(&c.device, c.surface_config.lock().unwrap().format, -0.001),
-                            (VirtualKeyCode::L, ElementState::Pressed) =>
-                                c.shaders.increase_c(&c.device, c.surface_config.lock().unwrap().format, -0.001),
-                            _ => {}
+                            (VirtualKeyCode::X, ElementState::Pressed) =>
+                                c.lights.sun.rotate(0., 10., 0.),
+                            (VirtualKeyCode::Z, ElementState::Pressed) =>
+                                c.lights.sun.rotate(0., -10., 0.),
+                            (VirtualKeyCode::V, ElementState::Pressed) =>
+                                c.lights.sun.rotate(10., 0., 0.),
+                            (VirtualKeyCode::C, ElementState::Pressed) =>
+                                c.lights.sun.rotate(-10., 0., 0.),
+                            
+                            (key, ElementState::Pressed) => {self.pressed_keys.insert(key);},
+                            (key, ElementState::Released) => {self.pressed_keys.remove(&key);}
                         }
                     },
 
@@ -92,7 +88,6 @@ impl Game {
         let objects = &c.objects.0.lock().unwrap();
         let camera = &c.camera.lock().unwrap();
         let squares = &c.ui.squares.lock().unwrap();
-        let basic_anim = &c.shaders.basic_anim.lock().unwrap();
         
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -114,7 +109,7 @@ impl Game {
                     stencil_ops: None
                 })
             });
-            Objects::draw(&mut render_pass, c, objects, camera, basic_anim);
+            Objects::draw(&mut render_pass, c, objects, camera);
             UI::draw(&mut render_pass, c, squares);
         }
 

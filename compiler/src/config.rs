@@ -1,7 +1,7 @@
 use std::path::Path;
 
 pub enum VertexType {
-    Basic, NUS, U
+    Basic, NUS, U, NU
 }
 
 pub struct Config {
@@ -22,6 +22,7 @@ impl Config {
             match spl.next().unwrap().trim() {
                 "VertexType" => match spl.next().unwrap().trim() {
                     "NUS" => res.vertex_type = VertexType::NUS,
+                    "NU" => res.vertex_type = VertexType::NU,
                     "U" => res.vertex_type = VertexType::U,
                     _ => {}
                 },

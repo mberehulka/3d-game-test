@@ -27,7 +27,7 @@ impl Shader {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[
-                    crate::assets::vertex::VertexU::LAYOUT
+                    crate::assets::vertex::VertexNU::LAYOUT
                 ]
             },
             fragment: Some(wgpu::FragmentState {

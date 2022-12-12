@@ -10,7 +10,8 @@ struct Transform {
 
 struct DirectionalLight {
     @location(0) projection: mat4x4<f32>,
-    @location(1) direction: vec4<f32>
+    @location(1) biased_projection: mat4x4<f32>,
+    @location(2) direction: vec4<f32>
 };
 @group(0) @binding(0)
 var<uniform> dir_light: DirectionalLight;
@@ -43,5 +44,5 @@ fn vs_main(vertex: Vertex, transform: Transform) -> Output {
 
 @fragment
 fn fs_main(in: Output) -> @location(0) vec4<f32> {
-    return vec4<f32>(vec3<f32>(in.position.w), 1.0);
+    return vec4<f32>(vec3<f32>(in.position.z), 1.0);
 }

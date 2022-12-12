@@ -11,6 +11,7 @@ pub mod terrain;
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct DirectionalLightBinding {
     pub projection: [[f32;4];4],
+    pub biased_projection: [[f32;4];4],
     pub direction: [f32;4]
 }
 
@@ -23,19 +24,22 @@ pub struct DirectionalLight {
     pub depth_texture: Texture,
     pub output_texture: Texture,
     pub shadow_texture: Texture,
+
     pub direction: Mutex<[f32;3]>,
+    pub size: Mutex<f32>,
     pub needs_update: AtomicBool
 }
 impl DirectionalLight {
     pub fn new(
         device: &wgpu::Device,
         direction: [f32;3],
+        size: f32,
         texture_size: u32
     ) -> Self {
         let buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(&[Self::get_binding(direction)]),
+                contents: bytemuck::cast_slice(&[Self::get_binding(direction, size)]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
             }
         );
@@ -71,26 +75,32 @@ impl DirectionalLight {
 
             depth_texture: Texture::depth("Directional light depth texture", device, texture_size, texture_size),
             direction: Mutex::new(direction),
+            size: Mutex::new(size),
             needs_update: AtomicBool::new(false)
         }
     }
-    pub fn get_binding(direction: [f32;3]) -> DirectionalLightBinding {
-        let s = 0.7;
-        let perspective = cgmath::frustum(-s, s, -s, s, 1., 100.);
-        let distance = Matrix4::from_translation([0.,0.,-5.].into());
+    pub fn get_binding(direction: [f32;3], s: f32) -> DirectionalLightBinding {
+        let perspective = cgmath::ortho(-s, s, -s, s, -s, s);
         let rotation = Quaternion::from_angle_x(Deg(direction[0])) *
-                        Quaternion::from_angle_y(Deg(direction[1]));
-        let direction = (rotation * Vector3::new(0.,0.,1.)).normalize();
+                       Quaternion::from_angle_y(Deg(direction[1]));
+        let distance = Matrix4::from_translation([0.,0.,-s/2.].into());
+        let projection = perspective * (distance * Matrix4::from(rotation));
+        let direction = (
+            Quaternion::from_angle_x(Deg(-direction[0])) *
+            Quaternion::from_angle_y(Deg(-direction[1])) *
+            Vector3::new(0.,0.,1.)
+        ).normalize();
         DirectionalLightBinding {
-            projection: (perspective * (distance * Matrix4::from(rotation))).into(),
-            direction: [-direction.x, -direction.y, -direction.z, 1.]
+            projection: projection.into(),
+            biased_projection: (projection).into(),
+            direction: [direction.x, direction.y, direction.z, 1.]
         }
     }
     pub fn update(&self, queue: &Queue) {
         if !self.needs_update.load(std::sync::atomic::Ordering::Relaxed) { return }
         self.needs_update.store(false, std::sync::atomic::Ordering::Relaxed);
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[
-            Self::get_binding(*self.direction.lock().unwrap())
+            Self::get_binding(*self.direction.lock().unwrap(), *self.size.lock().unwrap())
         ]))
     }
     pub fn draw(&self, c: &Context) {
@@ -137,6 +147,13 @@ impl DirectionalLight {
         encoder.copy_texture_to_texture(
             self.output_texture.texture.as_image_copy(), self.shadow_texture.texture.as_image_copy(), self.shadow_texture.size);
         c.queue.submit(std::iter::once(encoder.finish()));
+    }
+    pub fn rotate(&self, x: f32, y: f32, z: f32) {
+        let mut direction = self.direction.lock().unwrap();
+        direction[0] += x;
+        direction[1] += y;
+        direction[2] += z;
+        self.needs_update.store(true, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

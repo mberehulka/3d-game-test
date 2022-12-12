@@ -13,6 +13,7 @@ mod shaders;
 mod cursor;
 mod light;
 mod ui;
+mod transform;
 
 fn main() {
     let game = game::Game::new();

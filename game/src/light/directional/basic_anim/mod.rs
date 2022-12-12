@@ -35,14 +35,14 @@ impl Shader {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: DEFAULT_FORMAT,
                     blend: None,
-                    write_mask: wgpu::ColorWrites::ALL
+                    write_mask: wgpu::ColorWrites::RED
                 })]
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Front),
+                cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false

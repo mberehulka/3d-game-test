@@ -1,13 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{shaders::{Material, basic_anim}, context::Context, camera::Camera};
+use crate::{shaders::Material, context::Context, camera::Camera};
 
 use super::{Mesh, Instances, Armature, Animation};
 
 pub struct Object {
     pub mesh: Arc<Mesh>,
-    pub instances: Instances,
     pub material: Material,
+    pub instances: Instances,
     pub armature: Option<Armature>
 }
 impl Object {
@@ -54,8 +54,7 @@ impl Objects {
         render_pass: &mut wgpu::RenderPass<'r>,
         c: &'s Context,
         objects: &'s Vec<Arc<Object>>,
-        camera: &'s Camera,
-        basic_anim: &'s basic_anim::Shader
+        camera: &'s Camera
     ) {
         for object in objects.iter() {
             object.update(&c.queue);
@@ -64,7 +63,7 @@ impl Objects {
             render_pass.set_vertex_buffer(1, object.instances.buffer.slice(..));
             match &object.material {
                 Material::BasicAnim(material) => {
-                    render_pass.set_pipeline(&basic_anim.render_pipeline);
+                    render_pass.set_pipeline(&c.shaders.basic_anim.render_pipeline);
                     render_pass.set_bind_group(1, &material.bind_group, &[]);
                     render_pass.set_bind_group(2, &object.armature.as_ref().unwrap().bind_group, &[]);
                     render_pass.set_bind_group(3, &c.lights.sun.bind_group, &[]);

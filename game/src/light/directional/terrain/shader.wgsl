@@ -1,11 +1,9 @@
 struct Vertex {
-    @location(0) position: vec3<f32>,
-    @location(1) uv: vec2<f32>
+    @location(0) position: vec3<f32>
 };
 
 struct DirectionalLight {
-    @location(0) projection: mat4x4<f32>,
-    @location(1) direction: vec4<f32>
+    @location(0) projection: mat4x4<f32>
 };
 @group(0) @binding(0)
 var<uniform> dir_light: DirectionalLight;
@@ -23,5 +21,5 @@ fn vs_main(vertex: Vertex) -> Output {
 
 @fragment
 fn fs_main(in: Output) -> @location(0) vec4<f32> {
-    return vec4<f32>(vec3<f32>(in.position.w), 1.0);
+    return vec4<f32>(vec3<f32>(in.position.z), 1.0);
 }

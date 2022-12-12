@@ -10,8 +10,9 @@ pub struct Shader {
 }
 
 impl Shader {
-    pub fn new(device: &wgpu::Device, surface_texture_format: wgpu::TextureFormat, a: f32, b: f32, c: f32) -> Self {
+    pub fn new(device: &wgpu::Device, surface_texture_format: wgpu::TextureFormat) -> Self {
         log::info!("Creating basic_anim shader");
+        let a = 0.001;
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(format!("
@@ -47,7 +48,8 @@ var<uniform> skin_rotations: SkinPoses;
 
 struct Sun {{
     @location(0) projection: mat4x4<f32>,
-    @location(1) direction: vec4<f32>
+    @location(1) biased_projection: mat4x4<f32>,
+    @location(2) direction: vec4<f32>
 }};
 @group(3) @binding(0)
 var<uniform> sun: Sun;
@@ -55,8 +57,9 @@ var<uniform> sun: Sun;
 struct Output {{
     @builtin(position) position: vec4<f32>,
     @location(0) position_sun_space: vec4<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) uv: vec2<f32>
+    @location(1) vertex_position: vec3<f32>,
+    @location(2) normal: vec3<f32>,
+    @location(3) uv: vec2<f32>
 }};
 
 fn apply_skin_pose(vertex: Vertex, v3: vec3<f32>) -> vec3<f32> {{
@@ -80,9 +83,10 @@ fn apply_skin_rotation(vertex: Vertex, v3: vec3<f32>) -> vec3<f32> {{
 fn vs_main(vertex: Vertex, transform: Transform) -> Output {{
     var out: Output;
     out.uv = vertex.uv;
-    let pos = vec4<f32>((apply_skin_pose(vertex, vertex.position) * transform.scale), 1.0);
+    out.vertex_position = apply_skin_pose(vertex, vertex.position) * transform.scale;
+    let pos = vec4<f32>(out.vertex_position, 1.0);
     out.position = camera.projection * pos;
-    out.position_sun_space = sun.projection * pos;
+    out.position_sun_space = sun.biased_projection * pos;
     out.normal = normalize(apply_skin_rotation(vertex, vertex.normal));
     return out;
 }}
@@ -97,41 +101,42 @@ var sun_texture: texture_2d<f32>;
 @group(3) @binding(2)
 var sun_texture_sampler: sampler;
 
-fn sample(x: f32, y: f32, w: f32) -> f32 {{
+fn get_closest_depth(x: f32, y: f32) -> f32 {{
     return textureSample(sun_texture, sun_texture_sampler, vec2<f32>(
-        ((x / w) + 1.0) * 0.5,
-        1.0-(((y / w) + 1.0) * 0.5)
+        x * 0.5 + 0.5,
+        y * -0.5 + 0.5
     )).r;
 }}
-
-let ss: f32 = {a:.9};
 
 @fragment
 fn fs_main(in: Output) -> @location(0) vec4<f32> {{
     let texture = textureSample(diffuse_texture, diffuse_texture_sampler, in.uv);
-    let normal = dot(in.normal, sun.direction.xyz) * 0.5 + 0.5;
-    let closest_depth = 1.0 - (
-        (
-            sample(in.position_sun_space.x     , in.position_sun_space.y     , in.position_sun_space.w) +
-            sample(in.position_sun_space.x + ss, in.position_sun_space.y     , in.position_sun_space.w) +
-            sample(in.position_sun_space.x     , in.position_sun_space.y + ss, in.position_sun_space.w) +
-            sample(in.position_sun_space.x + ss, in.position_sun_space.y + ss, in.position_sun_space.w) +
-            sample(in.position_sun_space.x - ss, in.position_sun_space.y     , in.position_sun_space.w) +
-            sample(in.position_sun_space.x     , in.position_sun_space.y - ss, in.position_sun_space.w) +
-            sample(in.position_sun_space.x - ss, in.position_sun_space.y - ss, in.position_sun_space.w) +
-            sample(in.position_sun_space.x + ss, in.position_sun_space.y - ss, in.position_sun_space.w) +
-            sample(in.position_sun_space.x - ss, in.position_sun_space.y + ss, in.position_sun_space.w)
-        ) / 9.0
-    );
-    let bias = clamp(tan(acos(1.0 - normal)), {b:.9}, {c:.9});
-    let current_depth = ((in.position_sun_space.z / in.position_sun_space.w) + 1.0) * 0.5;
-    var shadow = 1.0;
-    if(closest_depth < current_depth - bias || normal < 0.1){{
-        shadow = 0.85;
-    }} else if(normal > 0.9){{
-        shadow = 1.15;
-    }}
-    return vec4<f32>(texture * shadow);
+    let closest_depth = (
+        get_closest_depth(in.position_sun_space.x      , in.position_sun_space.y      ) +
+        get_closest_depth(in.position_sun_space.x + {a}, in.position_sun_space.y      ) +
+        get_closest_depth(in.position_sun_space.x      , in.position_sun_space.y + {a}) +
+        get_closest_depth(in.position_sun_space.x + {a}, in.position_sun_space.y + {a}) +
+        get_closest_depth(in.position_sun_space.x - {a}, in.position_sun_space.y      ) +
+        get_closest_depth(in.position_sun_space.x      , in.position_sun_space.y - {a}) +
+        get_closest_depth(in.position_sun_space.x - {a}, in.position_sun_space.y - {a}) +
+        get_closest_depth(in.position_sun_space.x + {a}, in.position_sun_space.y - {a}) +
+        get_closest_depth(in.position_sun_space.x - {a}, in.position_sun_space.y + {a})
+    ) / 9.0;
+    let ndotl = dot(in.normal, sun.direction.xyz);
+    let view_dir = normalize(camera.position.xyz - in.vertex_position);
+    let reflect_dir = reflect(-sun.direction.xyz, in.normal);
+
+    let bias = clamp(tan(acos( ndotl*0.5+0.5 )), 0., 0.01);
+    var light = 1.0;
+    if(closest_depth < in.position_sun_space.z - bias){{ light -= 0.15; }}
+
+    let specular = dot(view_dir, reflect_dir);
+    if(specular > 0.5){{ light += 0.1; }}
+
+    let rim = 1.0 - dot(view_dir, in.normal);
+    if(rim > 0.6){{ light += 0.2; }}
+
+    return texture * light;
 }}
 ").into())
         });

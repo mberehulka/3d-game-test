@@ -1,4 +1,4 @@
-use super::{Reader, Transform};
+use crate::{assets::Reader, transform::Transform};
 
 pub struct AnimationJoint {
     pub pose: Transform

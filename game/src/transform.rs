@@ -1,8 +1,5 @@
 use cgmath::Matrix4;
-
-use crate::utils::{rotation_to_mat4, scale_to_mat4};
-
-use super::Reader;
+use crate::{utils::{rotation_to_mat4, scale_to_mat4}, assets::Reader};
 
 #[derive(Clone, Copy)]
 pub struct Transform {

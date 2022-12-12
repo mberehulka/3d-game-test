@@ -35,6 +35,19 @@ pub fn file(path: impl AsRef<Path>) -> Vec<u8> {
                 i += 1;
             }
         }),
+        VertexType::NU => write_vertices(&mut res, &conf, &gltf, &buffers, |res, indices, ps, ns, uvs, _, _| {
+            let ns = ns.unwrap();
+            let uvs = uvs.unwrap();
+            let mut i = 0;
+            let l = indices.len();
+            while i < l {
+                let idx = indices[i] as usize;
+                res.append_vec3_f32(ps[idx]);
+                res.append_vec3_f32(ns[idx]);
+                res.append_vec2_f32(uvs[idx]);
+                i += 1;
+            }
+        }),
         VertexType::NUS => write_vertices(&mut res, &conf, &gltf, &buffers, |res, indices, ps, ns, uvs, js, ws| {
             let ns = ns.unwrap();
             let uvs = uvs.unwrap();
@@ -94,7 +107,7 @@ pub fn file(path: impl AsRef<Path>) -> Vec<u8> {
                 res.append_mat4x4(ibms[joint_id]);
             }
         }
-        VertexType::Basic | VertexType::U => {}
+        VertexType::Basic | VertexType::U | VertexType::NU =>  {}
     }
     res.append_bytes(b"END");
 
@@ -114,6 +127,7 @@ fn write_vertices(
     match conf.vertex_type {
         VertexType::Basic => res.append_bytes(b"Basic#"),
         VertexType::NUS => res.append_bytes(b"NUS#"),
+        VertexType::NU => res.append_bytes(b"NU#"),
         VertexType::U => res.append_bytes(b"U#")
     }
     for mesh in gltf.meshes() {

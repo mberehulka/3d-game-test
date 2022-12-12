@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use super::{Reader, VertexType, Joint, VertexNUS, VertexU};
+use super::{Reader, VertexType, Joint, VertexNUS, VertexU, VertexNU};
 
 pub struct Mesh {
     pub name: String,
@@ -20,6 +20,15 @@ impl Mesh {
                 get_vertices_buffer::<VertexU>(device, reader, &mut vertices_len, |reader| {
                     VertexU {
                         position: reader.read_vec3(),
+                        uv: reader.read_vec2()
+                    }
+                })
+            }
+            VertexType::NU => {
+                get_vertices_buffer::<VertexNU>(device, reader, &mut vertices_len, |reader| {
+                    VertexNU {
+                        position: reader.read_vec3(),
+                        normal: reader.read_vec3(),
                         uv: reader.read_vec2()
                     }
                 })
