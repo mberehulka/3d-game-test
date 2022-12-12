@@ -2,9 +2,8 @@ use winit::{window::{WindowBuilder, Fullscreen, Window}, event_loop::EventLoop, 
 use crate::settings::Settings;
 
 pub fn new(settings: &Settings, event_loop: &EventLoop<()>) -> Window {
-    trace!("Creating window");
     let w = WindowBuilder::new()
-        .with_title("Nexodia")
+        .with_title("Experimental fragment")
         .with_resizable(true)
         .with_decorations(settings.window_decorations)
         .build(&event_loop).unwrap();
@@ -48,9 +47,10 @@ pub fn new(settings: &Settings, event_loop: &EventLoop<()>) -> Window {
         if let Some(pos) = settings.window_position {
             w.set_outer_position(pos)
         } else {
+            let size = w.inner_size();
             w.set_outer_position(PhysicalPosition {
-                x: monitor_size.width as f32 / 2.,
-                y: monitor_size.height as f32 / 2.
+                x: monitor_size.width as f32 / 2. - (size.width as f32 / 2.),
+                y: monitor_size.height as f32 / 2. - (size.height as f32 / 2.),
             })
         }
     }

@@ -1,9 +1,10 @@
 [package]
 name = "compiler"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
 cgmath = "0.18.0"
-image = { version = "0.24", features = ["png", "jpeg"] }
+num_cpus = "1.14.0"
 gltf = "1.0.0"
+image = { version = "0.24", features = ["png", "jpeg"] }

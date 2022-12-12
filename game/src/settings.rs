@@ -10,7 +10,10 @@ pub struct Settings {
     pub window_decorations: bool,
     pub window_maximized: bool,
     pub window_position: Option<PhysicalPosition<u32>>,
-    pub vsync: bool
+    pub vsync: bool,
+    pub fov: f32,
+    pub near: f32,
+    pub far: f32
 }
 impl Settings {
     pub fn read() -> Self {
@@ -58,7 +61,10 @@ impl Settings {
                     y: size[1].as_u32().expect(ERR)
                 })
             } else { None },
-            vsync: window["vsync"].as_bool().expect(ERR)
+            vsync: window["vsync"].as_bool().expect(ERR),
+            fov: window["fov"].as_f32().expect(ERR),
+            near: window["near"].as_f32().expect(ERR),
+            far: window["far"].as_f32().expect(ERR)
         }
     }
     pub fn get_default_json() -> JsonValue {
@@ -69,7 +75,10 @@ impl Settings {
                 decorations: true,
                 maximized: true,
                 position: None::<bool>,
-                vsync: false
+                vsync: true,
+                fov: 90.,
+                near: 0.01,
+                far: 1000.
             }
         }
     }
